@@ -1,4 +1,4 @@
-package com.securedata;
+package com.horizon.conf.secure;
 
 import com.facebook.react.ReactActivity;
 

@@ -1,4 +1,4 @@
-package com.securedata;
+package com.horizon.conf.secure;
 
 import android.app.Application;
 import android.content.Context;

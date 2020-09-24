@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "76740214962",
+    "firebase_url": "https://cp-conf-sec.firebaseio.com",
+    "project_id": "cp-conf-sec",
+    "storage_bucket": "cp-conf-sec.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:76740214962:android:80362494df938ad449c9ab",
+        "android_client_info": {
+          "package_name": "com.horizon.conf.secure"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "76740214962-vnmhs2v4keal4gp0d2n3h7svcbrb5m0a.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAnHlTHPIUx2UhbkyVSrDtTNQePv3hi4_Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "76740214962-vnmhs2v4keal4gp0d2n3h7svcbrb5m0a.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
