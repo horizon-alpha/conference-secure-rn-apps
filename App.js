@@ -18,7 +18,6 @@ import {
     TextInput,
     Title,
     Paragraph,
-    Portal,
     Provider as PaperProvider
 } from 'react-native-paper';
 
