@@ -9,6 +9,7 @@
 import React from 'react';
 import {
     View,
+    FlatList,
     StyleSheet,
     StatusBar,
 } from 'react-native';
@@ -19,17 +20,23 @@ import {
     Title,
     Paragraph,
     Switch,
+    List,
     Provider as PaperProvider
 } from 'react-native-paper';
 import auth from '@react-native-firebase/auth';
 import * as Keychain from 'react-native-keychain';
+import firestore from '@react-native-firebase/firestore';
 
 const App: () => React$Node = () => {
     const [mail, setMail] = React.useState('');
     const [password, setPassword] = React.useState('');
+    const [activeTodo, setActiveTodo] = React.useState('');
+    const [todos, setTodos] = React.useState([]);
     const [user, setUser] = React.useState();
     const [storeUserCredentials, setStoreUserCredentials] = React.useState(false);
     const [hasStoredCredentials, setHasStoredCredentials] = React.useState(false);
+
+    let todoSubscription;
 
     React.useEffect(() => {
         checkForCredentials();
@@ -50,6 +57,26 @@ const App: () => React$Node = () => {
     function onAuthStateChanged(user) {
         console.log(user);
         setUser(user);
+        if(user){
+            todoSubscription = firestore()
+                .collection("Todos")
+                .doc(user.uid)
+                .collection("Todos")
+                .orderBy("timestamp", "asc")
+                .onSnapshot(onTodosChance, onTodosChangeError);
+        }
+    }
+
+    function onTodosChance(querySnapshot) {
+        const todos = [];
+        querySnapshot.forEach(documentSnapshot => {
+            todos.push(documentSnapshot.data());
+        });
+        setTodos(todos);
+    }
+
+    function onTodosChangeError(error) {
+        console.log(error);
     }
 
     function onLogin(loginMail: string, loginPassword: string, loginStoreUserCredentials: boolean) {
@@ -92,17 +119,48 @@ const App: () => React$Node = () => {
 
     }
 
-
     function onLogout() {
+
+        if(todoSubscription){
+            todoSubscription();
+            todoSubscription = undefined;
+        }
         auth()
             .signOut()
             .then(() => {
+                setActiveTodo("");
+                setTodos([]);
                 checkForCredentials();
             });
     }
 
     function onStoreUserCredentialsChange() {
         setStoreUserCredentials(!storeUserCredentials);
+    }
+
+    function onAddTodo() {
+        if(activeTodo === ""){
+            alert("Please add some text")
+        } else {
+            firestore().collection("Todos").doc(user.uid).collection("Todos")
+                .add({
+                    text: activeTodo,
+                    timestamp: Date.now()
+                })
+                .then((docId) => {
+                    console.log("Successfully stored document: ", docId);
+                })
+                .catch((error) => {
+                    console.log("Could not store document: ", error);
+                })
+        }
+    }
+
+    // render rows for todos
+    function renderRow({item}) {
+        return (
+            <List.Item title={item.text}/>
+        );
     }
 
     // render
@@ -165,13 +223,27 @@ const App: () => React$Node = () => {
         content = (
             <Card>
                 <Card.Content>
-                    <Title>User</Title>
-                    <Paragraph>You have a registered user</Paragraph>
-                    <Paragraph>
-                        {
-                            JSON.stringify(user)
-                        }
-                    </Paragraph>
+                    <Title>Todos</Title>
+                    <Paragraph>Here are your Todos:</Paragraph>
+                    <FlatList
+                        data={todos}
+                        renderItem={renderRow}
+                        keyExtractor={(item, index) => "key" + index}
+                    />
+                    <TextInput
+                        style={styles.mTop8}
+                        label="Todo"
+                        value={activeTodo}
+                        mode="outlined"
+                        onChangeText={activeTodo => setActiveTodo(activeTodo)}
+                    />
+                    <Button
+                        style={[styles.mTop8, styles.loginButton]}
+                        icon="logout"
+                        mode="contained"
+                        onPress={onAddTodo}>
+                        Add
+                    </Button>
                     <Button
                         style={[styles.mTop8, styles.loginButton]}
                         icon="logout"
