@@ -18,49 +18,106 @@ import {
     TextInput,
     Title,
     Paragraph,
+    Switch,
     Provider as PaperProvider
 } from 'react-native-paper';
 import auth from '@react-native-firebase/auth';
+import * as Keychain from 'react-native-keychain';
 
 const App: () => React$Node = () => {
     const [mail, setMail] = React.useState('');
     const [password, setPassword] = React.useState('');
     const [user, setUser] = React.useState();
+    const [storeUserCredentials, setStoreUserCredentials] = React.useState(false);
+    const [hasStoredCredentials, setHasStoredCredentials] = React.useState(false);
 
     React.useEffect(() => {
+        checkForCredentials();
         const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
         return subscriber; // unsubscribe on unmount
     }, []);
+
+    async function checkForCredentials() {
+        try {
+            // Retrieve the credentials
+            const hasStoredCredentials = await Keychain.hasInternetCredentials('horizon.conf.firebase');
+            setHasStoredCredentials(hasStoredCredentials);
+        } catch (error) {
+            setHasStoredCredentials(false);
+        }
+    }
 
     function onAuthStateChanged(user) {
         console.log(user);
         setUser(user);
     }
 
-    function onLogin() {
+    function onLogin(loginMail: string, loginPassword: string, loginStoreUserCredentials: boolean) {
         auth()
-            .createUserWithEmailAndPassword(mail, password)
-            .then(() => {
-                console.log('User account created & signed in!');
+            .signInWithEmailAndPassword(loginMail, loginPassword)
+            .then(async () => {
+                if(loginStoreUserCredentials){
+                    // store user credentials
+                    await Keychain.setInternetCredentials(
+                        'horizon.conf.firebase',
+                        loginMail,
+                        loginPassword,
+                        {
+                            accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED,
+                            accessControl: Keychain.ACCESS_CONTROL.USER_PRESENCE
+                        });
+                    console.log('stored user credentials');
+                } else {
+                    await Keychain.resetInternetCredentials('horizon.conf.firebase');
+                    console.log('removed user credentials');
+                }
             })
             .catch(error => {
-                if (error.code === 'auth/email-already-in-use') {
-                    console.log('That email address is already in use!');
-                }
-                if (error.code === 'auth/invalid-email') {
-                    console.log('That email address is invalid!');
-                }
                 console.log(error);
             });
     }
 
+    async function onLoginWithStoredCredentials() {
+        try {
+            // Retrieve the credentials
+            const credentials = await Keychain.getInternetCredentials('horizon.conf.firebase');
+            console.log(credentials);
+            if (credentials) {
+                onLogin(credentials.username, credentials.password, true);
+            }
+        } catch (error) {
+            console.log("Keychain couldn't be accessed!", error);
+        }
+
+
+    }
+
+
     function onLogout() {
         auth()
             .signOut()
-            .then(() => console.log('User signed out!'));
+            .then(() => {
+                checkForCredentials();
+            });
+    }
+
+    function onStoreUserCredentialsChange() {
+        setStoreUserCredentials(!storeUserCredentials);
     }
 
     // render
+    let loginWithStoredCredentials;
+    if(hasStoredCredentials){
+        loginWithStoredCredentials = (
+            <Button
+                style={[styles.mTop8, styles.loginButton]}
+                icon="login"
+                mode="contained"
+                onPress={onLoginWithStoredCredentials}>
+                Login with stored credentials
+            </Button>
+        )
+    }
     let content;
     if (!user) {
         // no logged in user
@@ -84,13 +141,22 @@ const App: () => React$Node = () => {
                         mode="outlined"
                         onChangeText={password => setPassword(password)}
                     />
+                    <View style={styles.line}>
+                        <Switch
+                            value={storeUserCredentials}
+                            onValueChange={onStoreUserCredentialsChange}/>
+                            <Paragraph>Store user credentials</Paragraph>
+                    </View>
                     <Button
                         style={[styles.mTop8, styles.loginButton]}
                         icon="login"
                         mode="contained"
-                        onPress={onLogin}>
+                        onPress={() => onLogin(mail, password, storeUserCredentials)}>
                         Login
                     </Button>
+                    {
+                        loginWithStoredCredentials
+                    }
                 </Card.Content>
             </Card>
         );
@@ -142,6 +208,11 @@ const styles = StyleSheet.create({
     },
     loginButton: {
         padding: 8,
+    },
+    line: {
+        flexDirection: 'row',
+        paddingTop: 16,
+        paddingBottom: 8,
     }
 });
 
